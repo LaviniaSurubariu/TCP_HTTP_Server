@@ -17,49 +17,46 @@ public class TCPHTTPServer {
 
         while (true) {
 
-            OutputStream os = null;
-            PrintWriter out = null;
-            InputStream is = null;
-            BufferedReader in = null;
-
             try {
-
                 Socket connClientObj = servSock.accept();
+                Runnable rClientLambda = () -> {
+                    OutputStream os = null;
+                    PrintWriter out = null;
+                    InputStream is = null;
+                    BufferedReader in = null;
+                    try {
+                        is = connClientObj.getInputStream();
+                        in = new BufferedReader(new InputStreamReader(is));
+                        os = connClientObj.getOutputStream();
+                        out = new PrintWriter(os, true);
 
-                is = connClientObj.getInputStream();
-                in = new BufferedReader(new InputStreamReader(is));
-                os = connClientObj.getOutputStream();
-                out = new PrintWriter(os, true);
+                        String inputLine = "";
+                        String outputLine = "";
+                        StringBuffer procLine = new StringBuffer();
 
-                String inputLine = "";
-                String outputLine = "";
-                StringBuffer procLine = new StringBuffer();
+                        while (((inputLine = in.readLine()) != null) && (inputLine.length() > 1)) {
+                            procLine.append(inputLine + "\r\n");
+                        } //end while HTTP 1.1
+                        System.out.println("Client: " + connClientObj.toString() + " -> \n" + procLine.toString());
 
-                while (((inputLine = in.readLine()) != null) && (inputLine.length() > 1)) {
-                    procLine.append(inputLine + "\r\n");
-                } //end while HTTP 1.1
-                System.out.println("Client: " + connClientObj.toString() + " -> \n" + procLine.toString());
+                        HTTPSeminarProtocol objHTTPparser = new HTTPSeminarProtocol();
+                        outputLine = objHTTPparser.processInput(procLine.toString());
+                        out.println(outputLine);
 
-                HTTPSeminarProtocol objHTTPparser = new HTTPSeminarProtocol();
-                outputLine = objHTTPparser.processInput(procLine.toString());
-                out.println(outputLine);
-
-            } catch (IOException ioe) {
-                ioe.printStackTrace();
-            } finally {
-                if (out != null) {
-                    out.close();
-                }
+                    } catch (IOException ioe) {
+                        ioe.printStackTrace();
+                    } finally {
+                        if (out != null) {
+                            out.close();
+                        }
+                    }
+                };
+                Thread threadClientObj = new Thread(rClientLambda);
+                threadClientObj.start();
+            } catch (IOException ioex) {
+                ioex.printStackTrace();
             }
         }
-//
-//        try {
-//            if (servSock != null) {
-//                servSock.close();
-//            }
-//        } catch (IOException ioe) {
-//            ioe.printStackTrace();
-//        }
     }
 }
 
@@ -93,7 +90,7 @@ class HTTPSeminarProtocol {
                         fileContent += new String(buffResp, 0, bread);
                     }
                     fis.close();
-                    theOutput = "HTTP/1.1 200 OK \r\nContent-Type:" + contentType + "\r\nContent-Length:"+(fileContent.length()+2) + "\r\n\r\n" + fileContent + "\r\n";
+                    theOutput = "HTTP/1.1 200 OK \r\nContent-Type:" + contentType + "\r\nContent-Length:" + (fileContent.length() + 2) + "\r\n\r\n" + fileContent + "\r\n";
 
                 } catch (IOException ioec) {
                     ioec.printStackTrace();
